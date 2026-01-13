@@ -46,6 +46,7 @@ private:
   static bool PLARV(NMEAInputLine &line, NMEAInfo &info);
   static bool PLARS(NMEAInputLine &line, NMEAInfo &info);
   static bool PLARW(NMEAInputLine &line, NMEAInfo &info);
+  static bool PLARI(NMEAInputLine &line, NMEAInfo &info);  // NEW: IAS sentence
   static bool HCHDT(NMEAInputLine &line, NMEAInfo &info);
 
   bool SendCmd(const char *cmd, double value, OperationEnvironment &env);
@@ -91,6 +92,8 @@ LarusDevice::ParseNMEA(const char *_line, NMEAInfo &info)
       return PLARW(line, info);
     case 'S':
       return PLARS(line, info);
+      case 'I':
+        return PLARI(line, info);
     default:
       break;
     }
@@ -338,6 +341,32 @@ LarusDevice::PLARW(NMEAInputLine &line, NMEAInfo &info)
 
   return true;
 }
+bool
+LarusDevice::PLARI(NMEAInputLine &line, NMEAInfo &info)
+{
+  /*
+   * Indicated Airspeed sentence
+   *
+   *        1     2
+   *        |     |
+   * $PLARI,xxx.x*hh<CR><LF>
+   *
+   * Field Number:
+   * 1)  Indicated Airspeed (IAS) in km/h
+   * 2)  Checksum
+   */
+  double ias;
+  if (!line.ReadChecked(ias))
+    return false;
+
+  // Validate IAS range (0-500 km/h is reasonable for gliders)
+  if (ias < 0 || ias > 500)
+    return false;
+
+  info.ProvideIndicatedAirspeed(Units::ToSysUnit(ias, Unit::KILOMETER_PER_HOUR));
+  return true;
+}
+
 
 /*
 $PLARS Settings parameters bidirectional
